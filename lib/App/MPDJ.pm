@@ -129,7 +129,8 @@ sub ensure_playing {
 sub remove_old_songs {
   my ($self) = @_;
 
-  if (my $count = $self->mpd->status->song - $self->{before}) {
+  my $count = $self->mpd->status->song - $self->{before};
+  if ($count > 0) {
     $self->say("Deleting $count old songs");
     $self->mpd->playlist->delete(0 .. $count - 1);
   }
@@ -139,7 +140,8 @@ sub add_new_songs {
   my ($self) = @_;
 
   my $status = $self->mpd->status;
-  if (my $count = $self->{after} + $status->song - $status->playlistlength + 1) {
+  my $count = $self->{after} + $status->song - $status->playlistlength + 1;
+  if ($count > 0) {
     $self->say("Adding $count new songs");
     $self->add_song for 1 .. $count;
   }
