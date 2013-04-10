@@ -2,6 +2,9 @@ Revision history for App-MPDJ
 
 {{$NEXT}}
 
+1.03  2013-04-10 12:31:49 MST
+        - Add call sign injection feature
+
 1.02  2013-04-10 09:53:30 MST
         - Clean up documentation
 

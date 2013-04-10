@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = '1.02';
+our $VERSION = '1.03';
 
 use Audio::MPD;
 use Getopt::Long;

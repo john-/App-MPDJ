@@ -37,6 +37,19 @@ of random songs for you just like a real DJ.
     Number of songs to queue up in the playlist after the current song.  The
     default is 2.
 
+- \-c, --calls-freq
+
+    Frequency in seconds for call signs to be injected.  The default is 3600 (one
+    hour).  A value of 0 will disable call sign injection.
+
+- \--calls-path
+
+    Path to call sign files.  The default is 'calls'.
+
+- \--music-path
+
+    Path to music files.  The default is 'music'.
+
 - \-x, --crossfade
 
     Set the seconds of crossfade to use.  The default is 0 seconds which means no
