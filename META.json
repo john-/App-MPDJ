@@ -12,7 +12,7 @@
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
       "version" : "2"
    },
-   "name" : "App-MPDj",
+   "name" : "App-MPDJ",
    "no_index" : {
       "directory" : [
          "t",
@@ -51,15 +51,15 @@
    "release_status" : "stable",
    "resources" : {
       "bugtracker" : {
-         "web" : "https://github.com/bentglasstube/App-MPDj/issues"
+         "web" : "https://github.com/bentglasstube/App-MPDJ/issues"
       },
-      "homepage" : "https://github.com/bentglasstube/App-MPDj",
+      "homepage" : "https://github.com/bentglasstube/App-MPDJ",
       "repository" : {
          "type" : "git",
-         "url" : "https://github.com/bentglasstube/App-MPDj.git",
-         "web" : "https://github.com/bentglasstube/App-MPDj"
+         "url" : "https://github.com/bentglasstube/App-MPDJ.git",
+         "web" : "https://github.com/bentglasstube/App-MPDJ"
       }
    },
-   "version" : "0.01"
+   "version" : "1.00"
 }
 
