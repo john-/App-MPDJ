@@ -19,7 +19,7 @@ sub new {
     crossfade => 0,
     daemon    => 1,
     mpd       => undef,
-    mpd_conn  => undef,
+    mpd_conn  => 'localhost',
     verbose   => 0,
     @options
   }, $class;
