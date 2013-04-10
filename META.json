@@ -4,9 +4,9 @@
       "Alan Berndt <alan@eatabrick.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Milla version v1.0.0, Dist::Zilla version 4.300033, CPAN::Meta::Converter version 2.130880",
+   "generated_by" : "Dist::Milla version v1.0.0, Dist::Zilla version 4.300033, CPAN::Meta::Converter version 2.120921",
    "license" : [
-      "bsd"
+      "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
@@ -60,6 +60,6 @@
          "web" : "https://github.com/bentglasstube/App-MPDJ"
       }
    },
-   "version" : "1.01"
+   "version" : "1.02"
 }
 

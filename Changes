@@ -2,6 +2,9 @@ Revision history for App-MPDJ
 
 {{$NEXT}}
 
+1.02  2013-04-10 09:53:30 MST
+        - Clean up documentation
+
 1.01  2013-04-10 01:07:29 MST
         - Use localhost for default connection
 
