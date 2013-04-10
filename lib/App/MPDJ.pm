@@ -3,6 +3,7 @@ package App::MPDJ;
 use strict;
 use warnings;
 use 5.010;
+
 our $VERSION = '1.01';
 
 use Audio::MPD;
@@ -158,9 +159,9 @@ Options:
   --no-daemon     Turn off daemonizing
   -b,--before     Number of songs to keep in playlist before current song
   -a,--after      Number of songs to keep in playlist after current song
-  -x,--crossfade  Seconds of crossfading between songs.
-  -V,--version    Show version information
-  -h,--help       Show this help
+  -x,--crossfade  Seconds of crossfading between songs
+  -V,--version    Show version information and exit
+  -h,--help       Show this help and exit
 HELP
 }
 
@@ -177,11 +178,54 @@ App::MPDJ - MPD DJ.
 =head1 SYNOPSIS
 
   > mpdj
+  > mpdj --before 2 --after 6 --crossfade 5
+  > mpdj --no-daemon --verbose
 
 =head1 DESCRIPTION
 
 C<App::MPDJ> is an automatic DJ for your C<MPD> server.  It will manage a queue
 of random songs for you just like a real DJ.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --mpd
+
+Sets the MPD connection details.  See L<Audio::MPD#host> for more information.
+
+=item -v, --verbose
+
+Makes the output verbose.  Default is to be quiet.
+
+=item --no-daemon
+
+Run in the foreground instead of trying to fork and exit.
+
+=item -b, --before
+
+Number of songs to keep in the playlist before the current song.  The default
+is 2.
+
+=item -a, --after
+
+Number of songs to queue up in the playlist after the current song.  The
+default is 2.
+
+=item -x, --crossfade
+
+Set the seconds of crossfade to use.  The default is 0 seconds which means no
+crossfading will happen.
+
+=item -V, --version
+
+Show the current version of the script installed and exit.
+
+=item -h, --help
+
+Show this help and exit.
+
+=back
 
 =head1 AUTHOR
 
@@ -193,8 +237,8 @@ Copyright 2013- Alan Berndt
 
 =head1 LICENSE
 
-This library is free software; you can redistribute it and/or modify
-it freely.  See the LICENSE file for full details.
+This program is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
 
 =head1 SEE ALSO
 
