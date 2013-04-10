@@ -155,7 +155,7 @@ Usage: mpdj [options]
 Options:
   --mpd           MPD connection string (password\@host:port)
   -v,--verbose    Turn on chatty output
-  --no-daemon     Turn of daemonizing
+  --no-daemon     Turn off daemonizing
   -b,--before     Number of songs to keep in playlist before current song
   -a,--after      Number of songs to keep in playlist after current song
   -x,--crossfade  Seconds of crossfading between songs.
