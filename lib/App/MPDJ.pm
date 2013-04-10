@@ -14,14 +14,18 @@ sub new {
   my ($class, @options) = @_;
 
   my $self = bless {
-    action    => undef,
-    after     => 2,
-    before    => 2,
-    crossfade => 0,
-    daemon    => 1,
-    mpd       => undef,
-    mpd_conn  => 'localhost',
-    verbose   => 0,
+    action     => undef,
+    after      => 2,
+    before     => 2,
+    calls_path => 'calls',
+    calls_freq => 3600,
+    crossfade  => 0,
+    daemon     => 1,
+    last_call  => 0,
+    mpd        => undef,
+    mpd_conn   => 'localhost',
+    music_path => 'music',
+    verbose    => 0,
     @options
   }, $class;
 }
@@ -45,14 +49,17 @@ sub parse_options {
 
   Getopt::Long::Configure('bundling');
   Getopt::Long::GetOptions(
-    'h|help'        => sub { $self->{action} = 'show_help' },
-    'V|version'     => sub { $self->{action} = 'show_version' },
-    'mpd=s'         => \$self->{mpd_conn},
-    'a|after=i'     => \$self->{after},
-    'b|before=i'    => \$self->{before},
-    'x|crossfade=i' => \$self->{crossfade},
-    'D|daemon!'     => \$self->{daemon},
-    'v|verbose!'    => \$self->{verbose},
+    'D|daemon!'      => \$self->{daemon},
+    'V|version'      => sub { $self->{action} = 'show_version' },
+    'a|after=i'      => \$self->{after},
+    'b|before=i'     => \$self->{before},
+    'calls-path=s'   => \$self->{calls_path},
+    'c|calls-freq=i' => \$self->{calls_freq},
+    'h|help'         => sub { $self->{action} = 'show_help' },
+    'mpd=s'          => \$self->{mpd_conn},
+    'music-path=s'   => \$self->{music_path},
+    'v|verbose!'     => \$self->{verbose},
+    'x|crossfade=i'  => \$self->{crossfade},
   );
 }
 
@@ -85,6 +92,8 @@ sub execute {
     $self->remove_old_songs;
     $self->add_new_songs;
 
+    $self->add_call if $self->time_for_call;
+
     sleep 1;
   }
 }
@@ -97,6 +106,12 @@ sub configure {
   $self->mpd->repeat(0);
   $self->mpd->random(0);
   $self->mpd->fade($self->{crossfade});
+
+  if ($self->{calls_freq}) {
+    my $now = time;
+    $self->{last_call} = $now - $now % $self->{calls_freq};
+    $self->say("Set last call to $self->{last_call}");
+  }
 }
 
 sub ensure_playing {
@@ -133,12 +148,44 @@ sub add_new_songs {
 sub add_song {
   my ($self) = @_;
 
-  my @songs = $self->mpd->collection->all_songs;
-  my $index = int(rand(scalar @songs));
-  my $song = $songs[$index];
+  $self->add_random_item_from_path($self->{music_path});
+}
 
-  $self->say('Adding ' . $song->file);
-  $self->mpd->playlist->add($song->file);
+sub add_call {
+  my ($self) = @_;
+
+  $self->say('Injecting call');
+
+  $self->add_random_item_from_path($self->{calls_path}, 'immediate');
+  $self->{last_call} = time;
+}
+
+sub add_random_item_from_path {
+  my ($self, $path, $next) = @_;
+
+  my @items = grep { $_->isa('Audio::MPD::Common::Item::Song') }
+    $self->mpd->collection->all_items_simple($path);
+
+  my $index = int(rand(scalar @items));
+  my $item = $items[$index];
+
+  $self->say('Adding ' . $item->file);
+
+  my $playlist = $self->mpd->playlist;
+
+  $playlist->add($item->file);
+
+  if ($next) {
+    my $status = $self->mpd->status;
+    $playlist->move($status->playlistlength - 1, $status->song + 1);
+  }
+}
+
+sub time_for_call {
+  my ($self) = @_;
+
+  return unless $self->{calls_freq};
+  return time - $self->{last_call} > $self->{calls_freq};
 }
 
 sub show_version {
@@ -154,14 +201,17 @@ sub show_help {
 Usage: mpdj [options]
 
 Options:
-  --mpd           MPD connection string (password\@host:port)
-  -v,--verbose    Turn on chatty output
-  --no-daemon     Turn off daemonizing
-  -b,--before     Number of songs to keep in playlist before current song
-  -a,--after      Number of songs to keep in playlist after current song
-  -x,--crossfade  Seconds of crossfading between songs
-  -V,--version    Show version information and exit
-  -h,--help       Show this help and exit
+  --mpd             MPD connection string (password\@host:port)
+  -v,--verbose      Turn on chatty output
+  --no-daemon       Turn off daemonizing
+  -b,--before       Number of songs to keep in playlist before current song
+  -a,--after        Number of songs to keep in playlist after current song
+  -c,--calls-freq   Frequency to inject call signs in seconds
+  --calls-path      Path to call sign files
+  --music-path      Path to music files
+  -x,--crossfade    Seconds of crossfading between songs
+  -V,--version      Show version information and exit
+  -h,--help         Show this help and exit
 HELP
 }
 
@@ -211,6 +261,19 @@ is 2.
 
 Number of songs to queue up in the playlist after the current song.  The
 default is 2.
+
+=item -c, --calls-freq
+
+Frequency in seconds for call signs to be injected.  The default is 3600 (one
+hour).  A value of 0 will disable call sign injection.
+
+=item --calls-path
+
+Path to call sign files.  The default is 'calls'.
+
+=item --music-path
+
+Path to music files.  The default is 'music'.
 
 =item -x, --crossfade
 
