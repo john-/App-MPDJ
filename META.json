@@ -1,18 +1,18 @@
 {
-   "abstract" : "Blah blah blah",
+   "abstract" : "MPD DJ.",
    "author" : [
       "Alan Berndt <alan@eatabrick.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Milla version v1.0.0, Dist::Zilla version 4.300033, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Dist::Milla version v1.0.0, Dist::Zilla version 4.300033, CPAN::Meta::Converter version 2.130880",
    "license" : [
-      "perl_5"
+      "bsd"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
       "version" : "2"
    },
-   "name" : "App-MPDJ",
+   "name" : "App-MPDj",
    "no_index" : {
       "directory" : [
          "t",
@@ -36,7 +36,10 @@
       },
       "runtime" : {
          "requires" : {
-            "perl" : "5.008005"
+            "Audio::MPD" : "0",
+            "Getopt::Long" : "0",
+            "Proc::Daemon" : "0",
+            "perl" : "5.010"
          }
       },
       "test" : {
@@ -46,6 +49,17 @@
       }
    },
    "release_status" : "stable",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/bentglasstube/App-MPDj/issues"
+      },
+      "homepage" : "https://github.com/bentglasstube/App-MPDj",
+      "repository" : {
+         "type" : "git",
+         "url" : "https://github.com/bentglasstube/App-MPDj.git",
+         "web" : "https://github.com/bentglasstube/App-MPDj"
+      }
+   },
    "version" : "0.01"
 }
 

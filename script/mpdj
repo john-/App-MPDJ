@@ -1,0 +1,61 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use App::MPDJ;
+
+my $app = App::MPDJ->new();
+$app->parse_options(@ARGV);
+$app->execute() or exit 1;
+
+__END__
+
+=head1 NAME
+
+mpdj - automatic DJ for your MPD server
+
+=head1 DESCRIPTION
+
+C<mpdj> is an automatic DJ for your C<MPD> server.  It will manage a queue of
+random songs for you just like a real DJ.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --mpd
+
+Sets the MPD connection details.  See L<Audio::MPD#host> for more information.
+
+=item -v, --verbose
+
+Makes the output verbose.  Default is to be quiet.
+
+=item --no-daemon
+
+Run in the foreground instead of trying to fork and exit.
+
+=item -b, --before
+
+Number of songs to keep in the playlist before the current song.  The default
+is 2.
+
+=item -a, --after
+
+Number of songs to queue up in the playlist after the current song.  The
+default is 2.
+
+=item -x, --crossfade
+
+Set the seconds of crossfade to use.  The default is 0 seconds which means no
+crossfading will happen.
+
+=item -V, --version
+
+Show the current version of the script installed.
+
+=item -h, --help
+
+Show this help.
+
+=cut

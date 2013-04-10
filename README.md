@@ -1,14 +1,15 @@
 # NAME
 
-App::MPDJ - Blah blah blah
+App::MPDJ - MPD DJ.
 
 # SYNOPSIS
 
-    use App::MPDJ;
+    > mpdj
 
 # DESCRIPTION
 
-App::MPDJ is
+`App::MPDJ` is an automatic DJ for your `MPD` server.  It will manage a queue
+of random songs for you just like a real DJ.
 
 # AUTHOR
 
@@ -21,6 +22,8 @@ Copyright 2013- Alan Berndt
 # LICENSE
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+it freely.  See the LICENSE file for full details.
 
 # SEE ALSO
+
+[Audio::MPD](http://search.cpan.org/perldoc?Audio::MPD)
