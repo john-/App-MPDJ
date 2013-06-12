@@ -17,7 +17,8 @@ of random songs for you just like a real DJ.
 
 - \--mpd
 
-    Sets the MPD connection details.  See [Audio::MPD\#host](http://search.cpan.org/perldoc?Audio::MPD\#host) for more information.
+    Sets the MPD connection details.  Should be a string like password@host:port.
+    The password and port are both optional.
 
 - \-v, --verbose
 

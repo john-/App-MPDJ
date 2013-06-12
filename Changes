@@ -2,6 +2,9 @@ Revision history for App-MPDJ
 
 {{$NEXT}}
 
+1.04  2013-06-12 13:42:58 MST
+        - Parse host options because Audio::MPD doesn't handle them correctly
+
 1.03  2013-04-10 12:31:49 MST
         - Add call sign injection feature
 
