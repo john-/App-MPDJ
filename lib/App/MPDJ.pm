@@ -67,7 +67,12 @@ sub connect {
   my ($self) = @_;
 
   my $options = {};
-  $options->{host} = $self->{mpd_conn} if $self->{mpd_conn};
+
+  my (@items) = ($self->{mpd_conn} =~ /^(?:([^@]+)@)?([^:]+)(?::(\d+))?$/);
+
+  $options->{password} = $items[0] if $items[0];
+  $options->{host}     = $items[1] if $items[1];
+  $options->{port}     = $items[2] if $items[2];
 
   $self->{mpd} = Audio::MPD->new($options);
 }
@@ -244,7 +249,8 @@ of random songs for you just like a real DJ.
 
 =item --mpd
 
-Sets the MPD connection details.  See L<Audio::MPD#host> for more information.
+Sets the MPD connection details.  Should be a string like password@host:port.
+The password and port are both optional.
 
 =item -v, --verbose
 
