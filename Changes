@@ -1,6 +1,7 @@
 Revision history for App-MPDJ
 
 {{$NEXT}}
+        - Switch from Audio::MPD to Net::MPD
 
 1.04  2013-06-12 13:42:58 MST
         - Parse host options because Audio::MPD doesn't handle them correctly
