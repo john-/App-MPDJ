@@ -5,7 +5,7 @@ App::MPDJ - MPD DJ.
 # SYNOPSIS
 
     > mpdj
-    > mpdj --before 2 --after 6 --crossfade 5
+    > mpdj --before 2 --after 6
     > mpdj --no-daemon --verbose
 
 # DESCRIPTION
@@ -50,11 +50,6 @@ of random songs for you just like a real DJ.
 - \--music-path
 
     Path to music files.  The default is 'music'.
-
-- \-x, --crossfade
-
-    Set the seconds of crossfade to use.  The default is 0 seconds which means no
-    crossfading will happen.
 
 - \-V, --version
 
