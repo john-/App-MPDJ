@@ -19,7 +19,6 @@ sub new {
     before     => 2,
     calls_path => 'calls',
     calls_freq => 3600,
-    crossfade  => 0,
     daemon     => 1,
     last_call  => 0,
     mpd        => undef,
@@ -59,7 +58,6 @@ sub parse_options {
     'mpd=s'          => \$self->{mpd_conn},
     'music-path=s'   => \$self->{music_path},
     'v|verbose!'     => \$self->{verbose},
-    'x|crossfade=i'  => \$self->{crossfade},
   );
 }
 
@@ -110,7 +108,6 @@ sub configure {
 
   $self->mpd->repeat(0);
   $self->mpd->random(0);
-  $self->mpd->fade($self->{crossfade});
 
   if ($self->{calls_freq}) {
     my $now = time;
@@ -235,7 +232,7 @@ App::MPDJ - MPD DJ.
 =head1 SYNOPSIS
 
   > mpdj
-  > mpdj --before 2 --after 6 --crossfade 5
+  > mpdj --before 2 --after 6
   > mpdj --no-daemon --verbose
 
 =head1 DESCRIPTION
@@ -282,11 +279,6 @@ Path to call sign files.  The default is 'calls'.
 =item --music-path
 
 Path to music files.  The default is 'music'.
-
-=item -x, --crossfade
-
-Set the seconds of crossfade to use.  The default is 0 seconds which means no
-crossfading will happen.
 
 =item -V, --version
 
