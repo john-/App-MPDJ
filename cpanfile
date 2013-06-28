@@ -1,7 +1,7 @@
 requires 'perl', '5.010';
 
-requires 'Audio::MPD';
 requires 'Getopt::Long';
+requires 'Net::MPD';
 requires 'Proc::Daemon';
 
 on test => sub {
