@@ -246,7 +246,7 @@ sub handle_message_mpdj {
 
   my ($option, $value) = split /\s+/, $message, 2;
 
-  if ($option ~~ [qw[before after calls_freq]]) {
+  if ($option =~ /^(?:before|after|calls_freq)$/) {
     return unless $value =~ /^\d+$/;
     $self->say('Setting ' . $option . ' to ' . $value);
     $self->{$option} = $value;
