@@ -84,6 +84,8 @@ sub execute {
 
   $self->mpd->subscribe('mpdj');
 
+  $self->update_cache;
+
   while (1) {
     $self->say('Waiting');
     my @changes = $self->mpd->idle(qw(database player playlist message options));
@@ -108,6 +110,24 @@ sub configure {
     my $now = time;
     $self->{last_call} = $now - $now % $self->{calls_freq};
     $self->say("Set last call to $self->{last_call}");
+  }
+}
+
+sub update_cache {
+  my ($self) = @_;
+
+  $self->say('Updating music and calls cache...');
+
+  foreach my $category ( ('music', 'calls') ) {
+
+    @{$self->{$category}} = grep { $_->{type} eq 'file' } $self->mpd->list_all($self->{"${category}_path"});
+
+    my $total = scalar(@{$self->{$category}});
+    if ($total) {
+      printf("Total %s available: %d\n", $category, $total);
+    } else {
+      $self->say("No $category available.  Path is mpd path not file system.");
+    }
   }
 }
 
@@ -136,7 +156,7 @@ sub add_new_songs {
 sub add_song {
   my ($self) = @_;
 
-  $self->add_random_item_from_path($self->{music_path});
+  $self->add_random_item_from_category('music');
 }
 
 sub add_call {
@@ -144,18 +164,17 @@ sub add_call {
 
   $self->say('Injecting call');
 
-  $self->add_random_item_from_path($self->{calls_path}, 'immediate');
+  $self->add_random_item_from_category('calls', 'immediate');
 
   my $now = time;
   $self->{last_call} = $now - $now % $self->{calls_freq};
   $self->say('Set last call to ' . $self->{last_call});
 }
 
-sub add_random_item_from_path {
-  my ($self, $path, $next) = @_;
+sub add_random_item_from_category {
+  my ($self, $category, $next) = @_;
 
-  # TODO cache items
-  my @items = grep { $_->{type} eq 'file' } $self->mpd->list_all($path);
+  my @items = @{$self->{$category}};
 
   my $index = int(rand(scalar @items));
   my $item = $items[$index];
@@ -204,7 +223,7 @@ HELP
 sub database_changed {
   my ($self) = @_;
 
-  # TODO update cached file lists
+  $self->update_cache;
 }
 
 sub player_changed {
