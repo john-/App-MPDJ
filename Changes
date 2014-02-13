@@ -2,6 +2,9 @@ Revision history for App-MPDJ
 
 {{$NEXT}}
 
+1.06  2014-02-13 08:12:17 MST
+        - Implement caching of song information, thanks to john-
+
 1.05  2013-06-28 16:09:48 MST
         - Switch from Audio::MPD to Net::MPD
 
