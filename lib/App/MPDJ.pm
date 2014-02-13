@@ -124,7 +124,7 @@ sub update_cache {
 
     my $total = scalar(@{$self->{$category}});
     if ($total) {
-      printf("Total %s available: %d\n", $category, $total);
+      $self->say(sprintf("Total %s available: %d", $category, $total));
     } else {
       $self->say("No $category available.  Path is mpd path not file system.");
     }
