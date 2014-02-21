@@ -6,7 +6,7 @@ App::MPDJ - MPD DJ.
 
     > mpdj
     > mpdj --before 2 --after 6
-    > mpdj --no-daemon --verbose
+    > mpdj --no-daemon --conlog info
 
 # DESCRIPTION
 
