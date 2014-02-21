@@ -9,8 +9,7 @@ our $VERSION = '1.06';
 use Getopt::Long;
 use Net::MPD;
 use Proc::Daemon;
-use Log::Dispatch::Screen;
-use Log::Dispatch::Syslog;
+use Log::Dispatch;
 
 sub new {
   my ($class, @options) = @_;
@@ -72,27 +71,12 @@ sub execute {
 
   @SIG{qw( INT TERM HUP )} = sub { $self->safe_exit() };
 
-  $self->{log} = Log::Dispatch->new();
 
-  if ($self->{conlog}) {
-    $self->{log}->add(
-      Log::Dispatch::Screen->new(
-          name      => 'screen',
-          min_level => $self->{conlog},
-	  newline   => 1,
-      )
-    )
-  }
+  my @loggers;
+  push @loggers, ( [ 'Screen',   min_level => $self->{conlog}, newline => 1    ] ) if $self->{conlog};
+  push @loggers, ( [ 'Syslog',   min_level => $self->{syslog}, ident => 'mpdj' ] ) if $self->{syslog};
 
-  if ($self->{syslog}) {
-    $self->{log}->add(
-      Log::Dispatch::Syslog->new(
-          name      => 'syslog',
-          min_level => $self->{syslog},
-	  ident     => 'mpdj',
-      )
-    )
-  }
+  $self->{log} = Log::Dispatch->new( outputs => \@loggers );
 
   if ($self->{daemon}) {
     $self->{log}->notice('Forking to background');
