@@ -20,9 +20,17 @@ of random songs for you just like a real DJ.
     Sets the MPD connection details.  Should be a string like password@host:port.
     The password and port are both optional.
 
-- \-v, --verbose
+- \-s, --syslog
 
-    Makes the output verbose.  Default is to be quiet.
+    Turns on sending of log information to syslog at specified level.  Level is a
+    required parameter and can be one of debug, info, notice, warn[ing], err[or], crit[ical],
+    alert or emerg[ency].
+
+- \-l, --conlog
+
+    Turns on sending of log information to console at specified level.  Level is a
+    required parameter can be one of debug, info, notice, warn[ing], err[or], crit[ical],
+    alert or emerg[ency].
 
 - \--no-daemon
 

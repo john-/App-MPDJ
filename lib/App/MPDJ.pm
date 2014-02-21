@@ -71,7 +71,6 @@ sub execute {
 
   @SIG{qw( INT TERM HUP )} = sub { $self->safe_exit() };
 
-
   my @loggers;
   push @loggers, ( [ 'Screen',   min_level => $self->{conlog}, newline => 1    ] ) if $self->{conlog};
   push @loggers, ( [ 'Syslog',   min_level => $self->{syslog}, ident => 'mpdj' ] ) if $self->{syslog};
