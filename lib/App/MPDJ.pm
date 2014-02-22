@@ -10,21 +10,58 @@ use Getopt::Long;
 use Net::MPD;
 use Proc::Daemon;
 use Log::Dispatch;
+use AppConfig;
+use Data::Dumper;
 
 sub new {
   my ($class, @options) = @_;
 
+  my $config = AppConfig->new( {
+    CASE => 1,
+  } );
+
+  my @configurable = (
+    [ "conf|f=s", { DEFAULT => '<undef>' } ],
+    [ "before|b=i", { DEFAULT => 2 } ],
+    [ "after|a=i", { DEFAULT => 2 } ],
+    [ "calls-path=s", { DEFAULT => 'calls' } ],
+    [ "calls-freq=i", { DEFAULT => 3600 } ],
+    [ "daemon|D!", { DEFAULT => 1 } ],
+    [ "mpd=s", { DEFAULT => 'localhost' } ],
+    [ "music-path=s", { DEFAULT => 'music' } ],
+    [ "syslog|s=s", { DEFAULT => '<undef>' } ],
+    [ "conlog|l=s", { DEFAULT => '<undef>' } ],
+  );
+
+  foreach (@configurable) {
+      $config->define( $_->[0], $_->[1] );
+  }
+
+  #print Dumper(@configurable);
+
+  #$config->define("conf|f=s", { DEFAULT => '<undef>' } );
+  #$config->define("before|b=i", { DEFAULT => 2 } );
+  #$config->define("after|a=i", { DEFAULT => 2 } );
+  #$config->define("calls-path=s", { DEFAULT => 'calls' } );
+  #$config->define("calls-freq=i", { DEFAULT => 3600 } );
+  #$config->define("daemon|D!", { DEFAULT => 1 } );
+  #$config->define("mpd=s", { DEFAULT => 'localhost' } );
+  #$config->define("music-path=s", { DEFAULT => 'music' } );
+  #$config->define("syslog|s=s", { DEFAULT => '<undef>' } );
+  #$config->define("conlog|l=s", { DEFAULT => '<undef>' } );
+
   my $self = bless {
     action     => undef,
-    after      => 2,
-    before     => 2,
-    calls_path => 'calls',
-    calls_freq => 3600,
-    daemon     => 1,
+    #after      => 2,
+    #before     => 2,
+    #calls_path => 'calls',
+    #calls_freq => 3600,
+    #daemon     => 1,
     last_call  => 0,
-    mpd        => undef,
-    mpd_conn   => 'localhost',
-    music_path => 'music',
+    #mpd        => undef,
+    #mpd_conn   => 'localhost',
+    #music_path => 'music',
+    config     => $config,
     @options
   }, $class;
 }
@@ -38,28 +75,30 @@ sub mpd {
 sub parse_options {
   my ($self, @options) = @_;
 
-  local @ARGV = @options;
+  #local @ARGV = @options;
 
-  Getopt::Long::Configure('bundling');
-  Getopt::Long::GetOptions(
-    'D|daemon!'      => \$self->{daemon},
-    'V|version'      => sub { $self->{action} = 'show_version' },
-    'a|after=i'      => \$self->{after},
-    'b|before=i'     => \$self->{before},
-    'calls-path=s'   => \$self->{calls_path},
-    'c|calls-freq=i' => \$self->{calls_freq},
-    'h|help'         => sub { $self->{action} = 'show_help' },
-    'mpd=s'          => \$self->{mpd_conn},
-    'music-path=s'   => \$self->{music_path},
-    's|syslog=s'     => \$self->{syslog},
-    'l|conlog=s'     => \$self->{conlog},
-  );
+  $self->{config}->getopt(\@options);
+
+#  Getopt::Long::Configure('bundling');
+#  Getopt::Long::GetOptions(
+#    'D|daemon!'      => \$self->{daemon},
+#    'V|version'      => sub { $self->{action} = 'show_version' },
+#    'a|after=i'      => \$self->{after},
+#    'b|before=i'     => \$self->{before},
+#    'calls-path=s'   => \$self->{calls_path},
+#    'c|calls-freq=i' => \$self->{calls_freq},
+#    'h|help'         => sub { $self->{action} = 'show_help' },
+#    'mpd=s'          => \$self->{mpd_conn},
+#    'music-path=s'   => \$self->{music_path},
+#    's|syslog=s'     => \$self->{syslog},
+#    'l|conlog=s'     => \$self->{conlog},
+#  );
 }
 
 sub connect {
   my ($self) = @_;
 
-  $self->{mpd} = Net::MPD->connect($self->{mpd_conn});
+  $self->{mpd} = Net::MPD->connect($self->{config}->mpd());
 }
 
 sub execute {
@@ -71,13 +110,13 @@ sub execute {
 
   @SIG{qw( INT TERM HUP )} = sub { $self->safe_exit() };
 
-  my @loggers;
-  push @loggers, ( [ 'Screen',   min_level => $self->{conlog}, newline => 1    ] ) if $self->{conlog};
-  push @loggers, ( [ 'Syslog',   min_level => $self->{syslog}, ident => 'mpdj' ] ) if $self->{syslog};
+  my @loggers;  # TDO Do I need () ?
+  push @loggers, ( [ 'Screen',   min_level => $self->{config}->conlog(), newline => 1    ] ) if $self->{config}->conlog();
+  push @loggers, ( [ 'Syslog',   min_level => $self->{config}->syslog(), ident => 'mpdj' ] ) if $self->{config}->syslog();
 
   $self->{log} = Log::Dispatch->new( outputs => \@loggers );
 
-  if ($self->{daemon}) {
+  if ($self->{config}->daemon) {
     $self->{log}->notice('Forking to background');
     Proc::Daemon::Init;
   }
@@ -121,9 +160,9 @@ sub update_cache {
 
   $self->{log}->notice('Updating music and calls cache...');
 
-  foreach my $category ( ('music', 'calls') ) {
+  foreach my $category ( ('music-path', 'calls-path') ) {
 
-    @{$self->{$category}} = grep { $_->{type} eq 'file' } $self->mpd->list_all($self->{"${category}_path"});
+    @{$self->{$category}} = grep { $_->{type} eq 'file' } $self->mpd->list_all($self->{config}->$category);
 
     my $total = scalar(@{$self->{$category}});
     if ($total) {
@@ -138,7 +177,7 @@ sub remove_old_songs {
   my ($self) = @_;
 
   my $song = $self->mpd->song || 0;
-  my $count = $song - $self->{before};
+  my $count = $song - $self->{config}->before;
   if ($count > 0) {
     $self->{log}->info("Deleting $count old songs");
     $self->mpd->delete("0:$count");
@@ -149,7 +188,7 @@ sub add_new_songs {
   my ($self) = @_;
 
   my $song = $self->mpd->song || 0;
-  my $count = $self->{after} + $song - $self->mpd->playlist_length + 1;
+  my $count = $self->{config}->after + $song - $self->mpd->playlist_length + 1;
   if ($count > 0) {
     $self->{log}->info("Adding $count new songs");
     $self->add_song for 1 .. $count;
@@ -177,7 +216,8 @@ sub add_call {
 sub add_random_item_from_category {
   my ($self, $category, $next) = @_;
 
-  my @items = @{$self->{$category}};
+  #$self->{log}->debug("category: $category");
+  my @items = @{$self->{"$category-path"}};
 
   my $index = int(rand(scalar @items));
   my $item = $items[$index];
@@ -275,6 +315,7 @@ sub handle_message_mpdj {
 
   my ($option, $value) = split /\s+/, $message, 2;
 
+  # TODO: Understand this.  Does it break with new config system
   if ($option =~ /^(?:before|after|calls_freq)$/) {
     return unless $value =~ /^\d+$/;
     $self->{log}->info('Setting ' . $option . ' to ' . $value);
