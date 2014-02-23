@@ -195,7 +195,6 @@ sub add_call {
 sub add_random_item_from_category {
   my ($self, $category, $next) = @_;
 
-  #$self->{log}->debug("category: $category");
   my @items = @{$self->{$category}};
 
   my $index = int(rand(scalar @items));
