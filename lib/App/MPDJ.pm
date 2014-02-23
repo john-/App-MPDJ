@@ -11,56 +11,18 @@ use Net::MPD;
 use Proc::Daemon;
 use Log::Dispatch;
 use AppConfig;
-use Data::Dumper;
 
 sub new {
   my ($class, @options) = @_;
 
   my $config = AppConfig->new( {
+    ERROR => \&invocation_error,
     CASE => 1,
   } );
 
-  my @configurable = (
-    [ "conf|f=s", { DEFAULT => '<undef>' } ],
-    [ "before|b=i", { DEFAULT => 2 } ],
-    [ "after|a=i", { DEFAULT => 2 } ],
-    [ "calls-path=s", { DEFAULT => 'calls' } ],
-    [ "calls-freq=i", { DEFAULT => 3600 } ],
-    [ "daemon|D!", { DEFAULT => 1 } ],
-    [ "mpd=s", { DEFAULT => 'localhost' } ],
-    [ "music-path=s", { DEFAULT => 'music' } ],
-    [ "syslog|s=s", { DEFAULT => '<undef>' } ],
-    [ "conlog|l=s", { DEFAULT => '<undef>' } ],
-  );
-
-  foreach (@configurable) {
-      $config->define( $_->[0], $_->[1] );
-  }
-
-  #print Dumper(@configurable);
-
-  #$config->define("conf|f=s", { DEFAULT => '<undef>' } );
-  #$config->define("before|b=i", { DEFAULT => 2 } );
-  #$config->define("after|a=i", { DEFAULT => 2 } );
-  #$config->define("calls-path=s", { DEFAULT => 'calls' } );
-  #$config->define("calls-freq=i", { DEFAULT => 3600 } );
-  #$config->define("daemon|D!", { DEFAULT => 1 } );
-  #$config->define("mpd=s", { DEFAULT => 'localhost' } );
-  #$config->define("music-path=s", { DEFAULT => 'music' } );
-  #$config->define("syslog|s=s", { DEFAULT => '<undef>' } );
-  #$config->define("conlog|l=s", { DEFAULT => '<undef>' } );
-
   my $self = bless {
     action     => undef,
-    #after      => 2,
-    #before     => 2,
-    #calls_path => 'calls',
-    #calls_freq => 3600,
-    #daemon     => 1,
     last_call  => 0,
-    #mpd        => undef,
-    #mpd_conn   => 'localhost',
-    #music_path => 'music',
     config     => $config,
     @options
   }, $class;
@@ -73,26 +35,42 @@ sub mpd {
 }
 
 sub parse_options {
-  my ($self, @options) = @_;
+  my ($self, @args) = @_;
 
   #local @ARGV = @options;
+  my @args_copy = @args;  # make a copy as there are two calls to getopt
 
-  $self->{config}->getopt(\@options);
+  my @configurable = (
+    [ "conf|f=s",                { VALIDATE => \&check_file } ],
+    [ "before|b=i",              { DEFAULT =>  2            } ],
+    [ "after|a=i",               { DEFAULT =>  2            } ],
+    [ "calls-path|calls_path=s", { DEFAULT => 'calls'       } ],
+    [ "calls-freq|calls_freq=i", { DEFAULT =>  3600         } ],
+    [ "daemon|D!",               { DEFAULT =>  1            } ],
+    [ "mpd=s",                   { DEFAULT => 'localhost'   } ],
+    [ "music-path|music_path=s", { DEFAULT => 'music'       } ],
+    [ "syslog|s=s",              { DEFAULT => ''            } ],
+    [ "conlog|l=s",              { DEFAULT => ''            } ],
+    [ "help|h",                  { ACTION  => sub { $self->{action} = 'show_help'    } } ],
+    [ "version|V",               { ACTION  => sub { $self->{action} = 'show_version' } } ],
+  );
 
-#  Getopt::Long::Configure('bundling');
-#  Getopt::Long::GetOptions(
-#    'D|daemon!'      => \$self->{daemon},
-#    'V|version'      => sub { $self->{action} = 'show_version' },
-#    'a|after=i'      => \$self->{after},
-#    'b|before=i'     => \$self->{before},
-#    'calls-path=s'   => \$self->{calls_path},
-#    'c|calls-freq=i' => \$self->{calls_freq},
-#    'h|help'         => sub { $self->{action} = 'show_help' },
-#    'mpd=s'          => \$self->{mpd_conn},
-#    'music-path=s'   => \$self->{music_path},
-#    's|syslog=s'     => \$self->{syslog},
-#    'l|conlog=s'     => \$self->{conlog},
-#  );
+  foreach (@configurable) {
+      $self->{config}->define( $_->[0], $_->[1] );
+  }
+
+  $self->{config}->getopt(\@args);  # to get --conf option, if any
+
+  foreach my $config ( ($self->{config}->conf || '/etc/mpdj.conf', '~/.mpdjrc') ) {
+    if (-e $config) {
+      say "Loading config ($config)";
+      $self->{config}->file($config);
+    } else {
+      say "Config file skipped ($config)";
+    }
+  }
+
+  $self->{config}->getopt(\@args_copy); # to override config file
 }
 
 sub connect {
@@ -110,9 +88,9 @@ sub execute {
 
   @SIG{qw( INT TERM HUP )} = sub { $self->safe_exit() };
 
-  my @loggers;  # TDO Do I need () ?
-  push @loggers, ( [ 'Screen',   min_level => $self->{config}->conlog(), newline => 1    ] ) if $self->{config}->conlog();
-  push @loggers, ( [ 'Syslog',   min_level => $self->{config}->syslog(), ident => 'mpdj' ] ) if $self->{config}->syslog();
+  my @loggers;
+  push @loggers, ( [ 'Screen', min_level => $self->{config}->conlog, newline => 1    ] ) if $self->{config}->conlog;
+  push @loggers, ( [ 'Syslog', min_level => $self->{config}->syslog, ident => 'mpdj' ] ) if $self->{config}->syslog;
 
   $self->{log} = Log::Dispatch->new( outputs => \@loggers );
 
@@ -148,9 +126,9 @@ sub configure {
   $self->mpd->repeat(0);
   $self->mpd->random(0);
 
-  if ($self->{calls_freq}) {
+  if ($self->{config}->calls_freq) {
     my $now = time;
-    $self->{last_call} = $now - $now % $self->{calls_freq};
+    $self->{last_call} = $now - $now % $self->{config}->calls_freq;
     $self->{log}->notice("Set last call to $self->{last_call}");
   }
 }
@@ -160,15 +138,16 @@ sub update_cache {
 
   $self->{log}->notice('Updating music and calls cache...');
 
-  foreach my $category ( ('music-path', 'calls-path') ) {
+  foreach my $category ( ('music', 'calls') ) {
 
-    @{$self->{$category}} = grep { $_->{type} eq 'file' } $self->mpd->list_all($self->{config}->$category);
+    my $path = "${category}_path";  # TODO:  Figure out how to not require putting in var first
+    @{$self->{$category}} = grep { $_->{type} eq 'file' } $self->mpd->list_all($self->{config}->$path);
 
     my $total = scalar(@{$self->{$category}});
     if ($total) {
       $self->{log}->notice(sprintf("Total %s available: %d", $category, $total));
     } else {
-      $self->{log}->warning("No $category available.  Path is mpd path not file system.");
+      $self->{log}->warning("No $category available.  Path should be mpd path not file system.");
     }
   }
 }
@@ -209,7 +188,7 @@ sub add_call {
   $self->add_random_item_from_category('calls', 'immediate');
 
   my $now = time;
-  $self->{last_call} = $now - $now % $self->{calls_freq};
+  $self->{last_call} = $now - $now % $self->{config}->calls_freq();
   $self->{log}->info('Set last call to ' . $self->{last_call});
 }
 
@@ -217,7 +196,7 @@ sub add_random_item_from_category {
   my ($self, $category, $next) = @_;
 
   #$self->{log}->debug("category: $category");
-  my @items = @{$self->{"$category-path"}};
+  my @items = @{$self->{$category}};
 
   my $index = int(rand(scalar @items));
   my $item = $items[$index];
@@ -233,8 +212,14 @@ sub add_random_item_from_category {
 sub time_for_call {
   my ($self) = @_;
 
-  return unless $self->{calls_freq};
-  return time - $self->{last_call} > $self->{calls_freq};
+  return unless $self->{config}->calls_freq();
+  return time - $self->{last_call} > $self->{config}->calls_freq();
+}
+
+sub check_file {
+    my $file = $_[1];  # TODO:  Is this how it is done?
+
+    return -e $file;
 }
 
 sub show_version {
@@ -243,14 +228,14 @@ sub show_version {
   say "mpdj (App::MPDJ) version $VERSION";
 }
 
-sub show_help {
-  my ($self) = @_;
-
 sub safe_exit {
   my ($self) = @_;
 
   $self->{log}->log_and_die( level => 'notice', message => 'Ending');
 }
+
+sub show_help {
+  my ($self) = @_;
 
   print <<HELP;
 Usage: mpdj [options]
@@ -268,6 +253,7 @@ Options:
   -V,--version      Show version information and exit
   -h,--help         Show this help and exit
 HELP
+
 }
 
 sub database_changed {
@@ -324,6 +310,16 @@ sub handle_message_mpdj {
   }
 }
 
+sub invocation_error {
+
+    # TODO: Currently exits program after first error.  There may be more after this one to show.
+    say "error: @_";
+
+    show_help;
+
+    exit;
+}
+
 1;
 
 __END__
@@ -338,7 +334,7 @@ App::MPDJ - MPD DJ.
 
   > mpdj
   > mpdj --before 2 --after 6
-  > mpdj --no-daemon --verbose
+  > mpdj --no-daemon --conlog info
 
 =head1 DESCRIPTION
 
@@ -398,6 +394,10 @@ Show the current version of the script installed and exit.
 Show this help and exit.
 
 =back
+
+=head1 CONFIGURATION FILES
+
+Lowest to highest priority: /etc/mpdj.conf or config file specified on command line, ~/.mpdjrc, and finally command line options.  Format of configuration file is the ini file format as supported by AppConfig.
 
 =head1 AUTHOR
 
