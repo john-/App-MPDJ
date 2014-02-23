@@ -67,6 +67,10 @@ of random songs for you just like a real DJ.
 
     Show this help and exit.
 
+# CONFIGURATION FILES
+
+Lowest to highest priority: /etc/mpdj.conf or config file specified on command line, ~/.mpdjrc, and finally command line options. Format of configuration file is the ini file format as supported by AppConfig.
+
 # AUTHOR
 
 Alan Berndt <alan@eatabrick.org>
