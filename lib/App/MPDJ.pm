@@ -63,10 +63,10 @@ sub parse_options {
 
   foreach my $config ( ($self->{config}->conf || '/etc/mpdj.conf', '~/.mpdjrc') ) {
     if (-e $config) {
-      say "Loading config ($config)";
+	say "Loading config ($config)" if $self->{config}->conlog;
       $self->{config}->file($config);
     } else {
-      say "Config file skipped ($config)";
+      say "Config file skipped ($config)" if $self->{config}->conlog;
     }
   }
 
