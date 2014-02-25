@@ -203,14 +203,14 @@ sub show_version {
   say "mpdj (App::MPDJ) version $VERSION";
 }
 
-sub show_help {
-  my ($self) = @_;
-
 sub safe_exit {
   my ($self) = @_;
 
   $self->{log}->log_and_die( level => 'notice', message => 'Ending');
 }
+
+sub show_help {
+  my ($self) = @_;
 
   print <<HELP;
 Usage: mpdj [options]
