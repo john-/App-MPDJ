@@ -61,7 +61,7 @@ sub parse_options {
 
   $self->{config}->getopt(\@args);  # to get --conf option, if any
 
-  foreach my $config ( ($self->{config}->conf || '/etc/mpdj.conf', '~/.mpdjrc') ) {
+  foreach my $config ( ($self->{config}->conf || '/etc/mpdj.conf', "$ENV{HOME}/.mpdjrc") ) {
     if (-e $config) {
 	say "Loading config ($config)" if $self->{config}->conlog;
       $self->{config}->file($config);
