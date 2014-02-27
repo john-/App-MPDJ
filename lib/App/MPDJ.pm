@@ -37,7 +37,6 @@ sub mpd {
 sub parse_options {
   my ($self, @args) = @_;
 
-  #local @ARGV = @options;
   my @args_copy = @args;  # make a copy as there are two calls to getopt
 
   my @configurable = (
@@ -216,9 +215,8 @@ sub time_for_call {
 }
 
 sub check_file {
-    my $file = $_[1];  # TODO:  Is this how it is done?
 
-    return -e $file;
+    return -e $_[1];
 }
 
 sub show_version {
@@ -241,7 +239,7 @@ Usage: mpdj [options]
 
 Options:
   --mpd             MPD connection string (password\@host:port)
-  -s --syslog       Turns on syslog output (debug, info, notice, warn[ing], error, etc)
+  -s, --syslog      Turns on syslog output (debug, info, notice, warn[ing], error, etc)
   -l,--conlog       Turns on console output (same choices as --syslog)
   --no-daemon       Turn off daemonizing
   -b,--before       Number of songs to keep in playlist before current song
@@ -249,6 +247,7 @@ Options:
   -c,--calls-freq   Frequency to inject call signs in seconds
   --calls-path      Path to call sign files
   --music-path      Path to music files
+  -f, --conf        Config file to use instead of /etc/mpdj.conf
   -V,--version      Show version information and exit
   -h,--help         Show this help and exit
 HELP
@@ -383,6 +382,10 @@ Path to call sign files.  The default is 'calls'.
 =item --music-path
 
 Path to music files.  The default is 'music'.
+
+=item -f --conf
+
+Config file to use instead of /etc/mpdj.conf.
 
 =item -V, --version
 

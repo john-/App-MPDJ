@@ -59,6 +59,10 @@ of random songs for you just like a real DJ.
 
     Path to music files.  The default is 'music'.
 
+- \-f --conf
+
+    Config file to use instead of /etc/mpdj.conf.
+
 - \-V, --version
 
     Show the current version of the script installed and exit.
