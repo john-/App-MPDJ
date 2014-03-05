@@ -88,7 +88,8 @@ sub execute {
 
   while (1) {
     $self->say('Waiting');
-    my @changes = $self->mpd->idle(qw(database player playlist message options));
+    my @changes =
+      $self->mpd->idle(qw(database player playlist message options));
     $self->mpd->update_status();
 
     foreach my $subsystem (@changes) {
@@ -118,11 +119,12 @@ sub update_cache {
 
   $self->say('Updating music and calls cache...');
 
-  foreach my $category ( ('music', 'calls') ) {
+  foreach my $category (('music', 'calls')) {
 
-    @{$self->{$category}} = grep { $_->{type} eq 'file' } $self->mpd->list_all($self->{"${category}_path"});
+    @{ $self->{$category} } = grep { $_->{type} eq 'file' }
+      $self->mpd->list_all($self->{"${category}_path"});
 
-    my $total = scalar(@{$self->{$category}});
+    my $total = scalar(@{ $self->{$category} });
     if ($total) {
       $self->say(sprintf("Total %s available: %d", $category, $total));
     } else {
@@ -174,12 +176,12 @@ sub add_call {
 sub add_random_item_from_category {
   my ($self, $category, $next) = @_;
 
-  my @items = @{$self->{$category}};
+  my @items = @{ $self->{$category} };
 
   my $index = int(rand(scalar @items));
-  my $item = $items[$index];
+  my $item  = $items[$index];
 
-  my $uri = $item->{uri};
+  my $uri  = $item->{uri};
   my $song = $self->mpd->song || 0;
   my $pos  = $next ? $song + 1 : $self->mpd->playlist_length;
   $self->say('Adding ' . $uri . ' at position ' . $pos);
