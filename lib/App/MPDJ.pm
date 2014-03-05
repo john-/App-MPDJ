@@ -321,11 +321,15 @@ The password and port are both optional.
 
 =item -s, --syslog
 
-Turns on sending of log information to syslog at specified level.  Level is a required parameter can be one of debug, info, notice, warn[ing], err[or], crit[ical], alert or emerg[ency].
+Turns on sending of log information to syslog at specified level.  Level is a
+required parameter can be one of debug, info, notice, warn[ing], err[or],
+crit[ical], alert or emerg[ency].
 
 =item -l, --conlog
 
-Turns on sending of log information to console at specified level.  Level is a required parameter can be one of debug, info, notice, warn[ing], err[or], crit[ical], alert or emerg[ency].
+Turns on sending of log information to console at specified level.  Level is a
+required parameter can be one of debug, info, notice, warn[ing], err[or],
+crit[ical], alert or emerg[ency].
 
 =item --no-daemon
 
