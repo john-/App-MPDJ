@@ -9,6 +9,7 @@ our $VERSION = '1.06';
 use Getopt::Long;
 use Net::MPD;
 use Proc::Daemon;
+use Log::Dispatch;
 
 sub new {
   my ($class, @options) = @_;
@@ -24,7 +25,6 @@ sub new {
     mpd        => undef,
     mpd_conn   => 'localhost',
     music_path => 'music',
-    verbose    => 0,
     @options
   }, $class;
 }
@@ -33,12 +33,6 @@ sub mpd {
   my ($self) = @_;
 
   $self->{mpd};
-}
-
-sub say {
-  my ($self, @args) = @_;
-
-  say @args if $self->{verbose};
 }
 
 sub parse_options {
@@ -57,7 +51,8 @@ sub parse_options {
     'h|help'         => sub { $self->{action} = 'show_help' },
     'mpd=s'          => \$self->{mpd_conn},
     'music-path=s'   => \$self->{music_path},
-    'v|verbose!'     => \$self->{verbose},
+    's|syslog=s'     => \$self->{syslog},
+    'l|conlog=s'     => \$self->{conlog},
   );
 }
 
@@ -74,8 +69,18 @@ sub execute {
     $self->$action() and return 1;
   }
 
+  @SIG{qw( INT TERM HUP )} = sub { $self->safe_exit() };
+
+  my @loggers;
+  push @loggers, ([ 'Screen', min_level => $self->{conlog}, newline => 1 ])
+    if $self->{conlog};
+  push @loggers, ([ 'Syslog', min_level => $self->{syslog}, ident => 'mpdj' ])
+    if $self->{syslog};
+
+  $self->{log} = Log::Dispatch->new(outputs => \@loggers);
+
   if ($self->{daemon}) {
-    $self->say('Forking to background');
+    $self->{log}->notice('Forking to background');
     Proc::Daemon::Init;
   }
 
@@ -87,7 +92,7 @@ sub execute {
   $self->update_cache;
 
   while (1) {
-    $self->say('Waiting');
+    $self->{log}->debug('Waiting');
     my @changes =
       $self->mpd->idle(qw(database player playlist message options));
     $self->mpd->update_status();
@@ -102,7 +107,7 @@ sub execute {
 sub configure {
   my ($self) = @_;
 
-  $self->say('Configuring MPD server');
+  $self->{log}->notice('Configuring MPD server');
 
   $self->mpd->repeat(0);
   $self->mpd->random(0);
@@ -110,14 +115,14 @@ sub configure {
   if ($self->{calls_freq}) {
     my $now = time;
     $self->{last_call} = $now - $now % $self->{calls_freq};
-    $self->say("Set last call to $self->{last_call}");
+    $self->{log}->notice("Set last call to $self->{last_call}");
   }
 }
 
 sub update_cache {
   my ($self) = @_;
 
-  $self->say('Updating music and calls cache...');
+  $self->{log}->notice('Updating music and calls cache...');
 
   foreach my $category (('music', 'calls')) {
 
@@ -126,9 +131,11 @@ sub update_cache {
 
     my $total = scalar(@{ $self->{$category} });
     if ($total) {
-      $self->say(sprintf("Total %s available: %d", $category, $total));
+      $self->{log}
+        ->notice(sprintf("Total %s available: %d", $category, $total));
     } else {
-      $self->say("No $category available.  Path is mpd path not file system.");
+      $self->{log}
+        ->warning("No $category available.  Path is mpd path not file system.");
     }
   }
 }
@@ -139,7 +146,7 @@ sub remove_old_songs {
   my $song = $self->mpd->song || 0;
   my $count = $song - $self->{before};
   if ($count > 0) {
-    $self->say("Deleting $count old songs");
+    $self->{log}->info("Deleting $count old songs");
     $self->mpd->delete("0:$count");
   }
 }
@@ -150,7 +157,7 @@ sub add_new_songs {
   my $song = $self->mpd->song || 0;
   my $count = $self->{after} + $song - $self->mpd->playlist_length + 1;
   if ($count > 0) {
-    $self->say("Adding $count new songs");
+    $self->{log}->info("Adding $count new songs");
     $self->add_song for 1 .. $count;
   }
 }
@@ -164,13 +171,13 @@ sub add_song {
 sub add_call {
   my ($self) = @_;
 
-  $self->say('Injecting call');
+  $self->{log}->info('Injecting call');
 
   $self->add_random_item_from_category('calls', 'immediate');
 
   my $now = time;
   $self->{last_call} = $now - $now % $self->{calls_freq};
-  $self->say('Set last call to ' . $self->{last_call});
+  $self->{log}->info('Set last call to ' . $self->{last_call});
 }
 
 sub add_random_item_from_category {
@@ -184,7 +191,7 @@ sub add_random_item_from_category {
   my $uri  = $item->{uri};
   my $song = $self->mpd->song || 0;
   my $pos  = $next ? $song + 1 : $self->mpd->playlist_length;
-  $self->say('Adding ' . $uri . ' at position ' . $pos);
+  $self->{log}->info('Adding ' . $uri . ' at position ' . $pos);
 
   $self->mpd->add_id($uri, $pos);
 }
@@ -202,6 +209,12 @@ sub show_version {
   say "mpdj (App::MPDJ) version $VERSION";
 }
 
+sub safe_exit {
+  my ($self) = @_;
+
+  $self->{log}->log_and_die(level => 'notice', message => 'Ending');
+}
+
 sub show_help {
   my ($self) = @_;
 
@@ -210,7 +223,8 @@ Usage: mpdj [options]
 
 Options:
   --mpd             MPD connection string (password\@host:port)
-  -v,--verbose      Turn on chatty output
+  -s --syslog       Turns on syslog output (debug, info, notice, warn[ing], error, etc)
+  -l,--conlog       Turns on console output (same choices as --syslog)
   --no-daemon       Turn off daemonizing
   -b,--before       Number of songs to keep in playlist before current song
   -a,--after        Number of songs to keep in playlist after current song
@@ -256,7 +270,7 @@ sub message_changed {
 sub options_changed {
   my $self = shift;
 
-  $self->say('Resetting configuration');
+  $self->{log}->notice('Resetting configuration');
 
   $self->mpd->repeat(0);
   $self->mpd->random(0);
@@ -269,7 +283,7 @@ sub handle_message_mpdj {
 
   if ($option =~ /^(?:before|after|calls_freq)$/) {
     return unless $value =~ /^\d+$/;
-    $self->say('Setting ' . $option . ' to ' . $value);
+    $self->{log}->info('Setting ' . $option . ' to ' . $value);
     $self->{$option} = $value;
     $self->player_changed();
   }
@@ -305,9 +319,13 @@ of random songs for you just like a real DJ.
 Sets the MPD connection details.  Should be a string like password@host:port.
 The password and port are both optional.
 
-=item -v, --verbose
+=item -s, --syslog
 
-Makes the output verbose.  Default is to be quiet.
+Turns on sending of log information to syslog at specified level.  Level is a required parameter can be one of debug, info, notice, warn[ing], err[or], crit[ical], alert or emerg[ency].
+
+=item -l, --conlog
+
+Turns on sending of log information to console at specified level.  Level is a required parameter can be one of debug, info, notice, warn[ing], err[or], crit[ical], alert or emerg[ency].
 
 =item --no-daemon
 
