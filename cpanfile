@@ -1,6 +1,7 @@
 requires 'perl', '5.010';
 
 requires 'Getopt::Long';
+requires 'Log::Dispatch';
 requires 'Net::MPD';
 requires 'Proc::Daemon';
 
