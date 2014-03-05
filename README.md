@@ -6,7 +6,7 @@ App::MPDJ - MPD DJ.
 
     > mpdj
     > mpdj --before 2 --after 6
-    > mpdj --no-daemon --conlog info
+    > mpdj --no-daemon --verbose
 
 # DESCRIPTION
 
@@ -23,14 +23,14 @@ of random songs for you just like a real DJ.
 - \-s, --syslog
 
     Turns on sending of log information to syslog at specified level.  Level is a
-    required parameter and can be one of debug, info, notice, warn[ing], err[or], crit[ical],
-    alert or emerg[ency].
+    required parameter can be one of debug, info, notice, warn\[ing\], err\[or\],
+    crit\[ical\], alert or emerg\[ency\].
 
 - \-l, --conlog
 
     Turns on sending of log information to console at specified level.  Level is a
-    required parameter can be one of debug, info, notice, warn[ing], err[or], crit[ical],
-    alert or emerg[ency].
+    required parameter can be one of debug, info, notice, warn\[ing\], err\[or\],
+    crit\[ical\], alert or emerg\[ency\].
 
 - \--no-daemon
 

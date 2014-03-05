@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = '1.06';
+our $VERSION = '1.07';
 
 use Getopt::Long;
 use Net::MPD;
