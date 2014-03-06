@@ -10,21 +10,20 @@ use Getopt::Long;
 use Net::MPD;
 use Proc::Daemon;
 use Log::Dispatch;
+use AppConfig;
 
 sub new {
   my ($class, @options) = @_;
 
+  my $config = AppConfig->new( {
+    ERROR => \&invocation_error,
+    CASE => 1,
+  } );
+
   my $self = bless {
     action     => undef,
-    after      => 2,
-    before     => 2,
-    calls_path => 'calls',
-    calls_freq => 3600,
-    daemon     => 1,
     last_call  => 0,
-    mpd        => undef,
-    mpd_conn   => 'localhost',
-    music_path => 'music',
+    config     => $config,
     @options
   }, $class;
 }
@@ -36,30 +35,47 @@ sub mpd {
 }
 
 sub parse_options {
-  my ($self, @options) = @_;
+  my ($self, @args) = @_;
 
-  local @ARGV = @options;
+  my @args_copy = @args;  # make a copy as there are two calls to getopt
 
-  Getopt::Long::Configure('bundling');
-  Getopt::Long::GetOptions(
-    'D|daemon!'      => \$self->{daemon},
-    'V|version'      => sub { $self->{action} = 'show_version' },
-    'a|after=i'      => \$self->{after},
-    'b|before=i'     => \$self->{before},
-    'calls-path=s'   => \$self->{calls_path},
-    'c|calls-freq=i' => \$self->{calls_freq},
-    'h|help'         => sub { $self->{action} = 'show_help' },
-    'mpd=s'          => \$self->{mpd_conn},
-    'music-path=s'   => \$self->{music_path},
-    's|syslog=s'     => \$self->{syslog},
-    'l|conlog=s'     => \$self->{conlog},
+  my @configurable = (
+    [ "conf|f=s",                { VALIDATE => \&check_file } ],
+    [ "before|b=i",              { DEFAULT =>  2            } ],
+    [ "after|a=i",               { DEFAULT =>  2            } ],
+    [ "calls-path|calls_path=s", { DEFAULT => 'calls'       } ],
+    [ "calls-freq|calls_freq=i", { DEFAULT =>  3600         } ],
+    [ "daemon|D!",               { DEFAULT =>  1            } ],
+    [ "mpd=s",                   { DEFAULT => 'localhost'   } ],
+    [ "music-path|music_path=s", { DEFAULT => 'music'       } ],
+    [ "syslog|s=s",              { DEFAULT => ''            } ],
+    [ "conlog|l=s",              { DEFAULT => ''            } ],
+    [ "help|h",                  { ACTION  => sub { $self->{action} = 'show_help'    } } ],
+    [ "version|V",               { ACTION  => sub { $self->{action} = 'show_version' } } ],
   );
+
+  foreach (@configurable) {
+      $self->{config}->define( $_->[0], $_->[1] );
+  }
+
+  $self->{config}->getopt(\@args);  # to get --conf option, if any
+
+  foreach my $config ( ($self->{config}->conf || '/etc/mpdj.conf', "$ENV{HOME}/.mpdjrc") ) {
+    if (-e $config) {
+	say "Loading config ($config)" if $self->{config}->conlog;
+      $self->{config}->file($config);
+    } else {
+      say "Config file skipped ($config)" if $self->{config}->conlog;
+    }
+  }
+
+  $self->{config}->getopt(\@args_copy); # to override config file
 }
 
 sub connect {
   my ($self) = @_;
 
-  $self->{mpd} = Net::MPD->connect($self->{mpd_conn});
+  $self->{mpd} = Net::MPD->connect($self->{config}->mpd());
 }
 
 sub execute {
@@ -72,14 +88,12 @@ sub execute {
   @SIG{qw( INT TERM HUP )} = sub { $self->safe_exit() };
 
   my @loggers;
-  push @loggers, ([ 'Screen', min_level => $self->{conlog}, newline => 1 ])
-    if $self->{conlog};
-  push @loggers, ([ 'Syslog', min_level => $self->{syslog}, ident => 'mpdj' ])
-    if $self->{syslog};
+  push @loggers, ( [ 'Screen', min_level => $self->{config}->conlog, newline => 1    ] ) if $self->{config}->conlog;
+  push @loggers, ( [ 'Syslog', min_level => $self->{config}->syslog, ident => 'mpdj' ] ) if $self->{config}->syslog;
 
   $self->{log} = Log::Dispatch->new(outputs => \@loggers);
 
-  if ($self->{daemon}) {
+  if ($self->{config}->daemon) {
     $self->{log}->notice('Forking to background');
     Proc::Daemon::Init;
   }
@@ -112,9 +126,9 @@ sub configure {
   $self->mpd->repeat(0);
   $self->mpd->random(0);
 
-  if ($self->{calls_freq}) {
+  if ($self->{config}->calls_freq) {
     my $now = time;
-    $self->{last_call} = $now - $now % $self->{calls_freq};
+    $self->{last_call} = $now - $now % $self->{config}->calls_freq;
     $self->{log}->notice("Set last call to $self->{last_call}");
   }
 }
@@ -126,16 +140,15 @@ sub update_cache {
 
   foreach my $category (('music', 'calls')) {
 
-    @{ $self->{$category} } = grep { $_->{type} eq 'file' }
-      $self->mpd->list_all($self->{"${category}_path"});
+    my $path = "${category}_path";  # TODO:  Figure out how to not require putting in var first
+    @{$self->{$category}} = grep { $_->{type} eq 'file' } $self->mpd->list_all($self->{config}->$path);
 
     my $total = scalar(@{ $self->{$category} });
     if ($total) {
       $self->{log}
         ->notice(sprintf("Total %s available: %d", $category, $total));
     } else {
-      $self->{log}
-        ->warning("No $category available.  Path is mpd path not file system.");
+      $self->{log}->warning("No $category available.  Path should be mpd path not file system.");
     }
   }
 }
@@ -144,7 +157,7 @@ sub remove_old_songs {
   my ($self) = @_;
 
   my $song = $self->mpd->song || 0;
-  my $count = $song - $self->{before};
+  my $count = $song - $self->{config}->before;
   if ($count > 0) {
     $self->{log}->info("Deleting $count old songs");
     $self->mpd->delete("0:$count");
@@ -155,7 +168,7 @@ sub add_new_songs {
   my ($self) = @_;
 
   my $song = $self->mpd->song || 0;
-  my $count = $self->{after} + $song - $self->mpd->playlist_length + 1;
+  my $count = $self->{config}->after + $song - $self->mpd->playlist_length + 1;
   if ($count > 0) {
     $self->{log}->info("Adding $count new songs");
     $self->add_song for 1 .. $count;
@@ -176,7 +189,7 @@ sub add_call {
   $self->add_random_item_from_category('calls', 'immediate');
 
   my $now = time;
-  $self->{last_call} = $now - $now % $self->{calls_freq};
+  $self->{last_call} = $now - $now % $self->{config}->calls_freq();
   $self->{log}->info('Set last call to ' . $self->{last_call});
 }
 
@@ -199,8 +212,13 @@ sub add_random_item_from_category {
 sub time_for_call {
   my ($self) = @_;
 
-  return unless $self->{calls_freq};
-  return time - $self->{last_call} > $self->{calls_freq};
+  return unless $self->{config}->calls_freq();
+  return time - $self->{last_call} > $self->{config}->calls_freq();
+}
+
+sub check_file {
+
+    return -e $_[1];
 }
 
 sub show_version {
@@ -223,7 +241,7 @@ Usage: mpdj [options]
 
 Options:
   --mpd             MPD connection string (password\@host:port)
-  -s --syslog       Turns on syslog output (debug, info, notice, warn[ing], error, etc)
+  -s, --syslog      Turns on syslog output (debug, info, notice, warn[ing], error, etc)
   -l,--conlog       Turns on console output (same choices as --syslog)
   --no-daemon       Turn off daemonizing
   -b,--before       Number of songs to keep in playlist before current song
@@ -231,9 +249,11 @@ Options:
   -c,--calls-freq   Frequency to inject call signs in seconds
   --calls-path      Path to call sign files
   --music-path      Path to music files
+  -f, --conf        Config file to use instead of /etc/mpdj.conf
   -V,--version      Show version information and exit
   -h,--help         Show this help and exit
 HELP
+
 }
 
 sub database_changed {
@@ -281,12 +301,23 @@ sub handle_message_mpdj {
 
   my ($option, $value) = split /\s+/, $message, 2;
 
+  # TODO: Understand this.  Does it break with new config system
   if ($option =~ /^(?:before|after|calls_freq)$/) {
     return unless $value =~ /^\d+$/;
     $self->{log}->info('Setting ' . $option . ' to ' . $value);
     $self->{$option} = $value;
     $self->player_changed();
   }
+}
+
+sub invocation_error {
+
+    # TODO: Currently exits program after first error.  There may be more after this one to show.
+    say "error: @_";
+
+    show_help;
+
+    exit;
 }
 
 1;
@@ -303,7 +334,7 @@ App::MPDJ - MPD DJ.
 
   > mpdj
   > mpdj --before 2 --after 6
-  > mpdj --no-daemon --verbose
+  > mpdj --no-daemon --conlog info
 
 =head1 DESCRIPTION
 
@@ -358,6 +389,10 @@ Path to call sign files.  The default is 'calls'.
 
 Path to music files.  The default is 'music'.
 
+=item -f --conf
+
+Config file to use instead of /etc/mpdj.conf.
+
 =item -V, --version
 
 Show the current version of the script installed and exit.
@@ -367,6 +402,10 @@ Show the current version of the script installed and exit.
 Show this help and exit.
 
 =back
+
+=head1 CONFIGURATION FILES
+
+Lowest to highest priority: /etc/mpdj.conf or config file specified on command line, ~/.mpdjrc, and finally command line options.  Format of configuration file is the ini file format as supported by AppConfig.
 
 =head1 AUTHOR
 

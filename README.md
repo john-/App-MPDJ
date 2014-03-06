@@ -59,6 +59,10 @@ of random songs for you just like a real DJ.
 
     Path to music files.  The default is 'music'.
 
+- \-f --conf
+
+    Config file to use instead of /etc/mpdj.conf.
+
 - \-V, --version
 
     Show the current version of the script installed and exit.
@@ -66,6 +70,10 @@ of random songs for you just like a real DJ.
 - \-h, --help
 
     Show this help and exit.
+
+# CONFIGURATION FILES
+
+Lowest to highest priority: /etc/mpdj.conf or config file specified on command line, ~/.mpdjrc, and finally command line options. Format of configuration file is the ini file format as supported by AppConfig.
 
 # AUTHOR
 
